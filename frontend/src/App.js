@@ -8,23 +8,42 @@ import DataTable from './components/DataTable';
 
 const BACKEND = 'http://localhost:5000';
 
+
 function formatFeeds(raw) {
-  const mapped = (raw || []).map(f => ({
-    time: (f.created_at || '').replace('T', ' ').replace('Z',''),
-    temp: f.field1 ? parseFloat(f.field1) : null,
-    hum: f.field2 ? parseFloat(f.field2) : null,
-    entry_id: f.entry_id
-  }));
-  return mapped.reverse(); // oldest -> newest
+  // raw: feeds de ThingSpeak (cada feed tiene created_at, field1, field2, entry_id)
+  // field1 = humedad, field2 = temperatura
+  const mapped = (raw || []).map(f => {
+    // Parseo del timestamp UTC y conversión a zona local (America/Sao_Paulo)
+    const date = new Date(f.created_at); // created_at tiene Z => UTC
+    // Formato: "YYYY-MM-DD HH:MM:SS" en zona local (hora 24h)
+    const timeLocal = date.toLocaleString('es-ES', {
+      timeZone: 'America/Sao_Paulo',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit',
+      hour12: false
+    }).replace(/\//g,'-').replace(',', '');
+
+    return {
+      time: timeLocal, // string local
+      // CORRECCIÓN: field1 -> humedad, field2 -> temperatura
+      temp: f.field2 ? parseFloat(f.field2) : null,
+      hum: f.field1 ? parseFloat(f.field1) : null,
+      entry_id: f.entry_id
+    };
+  });
+
+  return mapped.reverse(); // si quieres mostrar de más antiguo -> más nuevo
 }
 
+
 function calcStats(latest, feeds) {
-  const lastTemp = latest?.field1 ? parseFloat(latest.field1) : null;
-  const lastHum = latest?.field2 ? parseFloat(latest.field2) : null;
+  const lastTemp = latest?.field2 ? parseFloat(latest.field2) : null;
+  const lastHum = latest?.field1 ? parseFloat(latest.field1) : null;
   const avgTemp = feeds.length ? (feeds.reduce((s, f) => s + (f.temp ?? 0), 0)/feeds.length).toFixed(2) : null;
   const avgHum = feeds.length ? (feeds.reduce((s, f) => s + (f.hum ?? 0), 0)/feeds.length).toFixed(2) : null;
   return { lastTemp, lastHum, avgTemp, avgHum };
 }
+
 
 function App() {
   const [last, setLast] = useState(null);
@@ -63,8 +82,24 @@ function App() {
       <Header title="ESP Dashboard" subtitle="Temperatura y Humedad — myesp_dht_channel" />
 
       <div style={{ display:'flex', gap:12, marginBottom:16 }}>
-        <StatCard title="Temperatura actual" value={stats.lastHum ?? last?.field2 ?? '—'} unit="°C" small={`Promedio últimos ${results}: ${stats.avgHum ?? '—'} %`} />
-        <StatCard title="Humedad actual" value={stats.lastTemp ?? last?.field1 ?? '—'} unit="%" small={`Promedio últimos ${results}: ${stats.avgTemp ?? '—'} °C`} />
+        <div style={{ display:'flex', gap:12, marginBottom:16 }}>
+  <StatCard
+    title="Temperatura actual"
+    value={stats.lastTemp ?? (last?.field2 ? parseFloat(last.field2).toFixed(2) : '—')}
+    unit="°C"
+    small={`Promedio últimos ${results}: ${stats.avgTemp ?? '—'} °C`}
+  />
+  <StatCard
+    title="Humedad actual"
+    value={stats.lastHum ?? (last?.field1 ? parseFloat(last.field1).toFixed(2) : '—')}
+    unit="%"
+    small={`Promedio últimos ${results}: ${stats.avgHum ?? '—'} %`}
+  />
+  ...
+</div>
+
+
+        
         
         <div style={{ marginLeft:'auto', display:'flex', gap:8, alignItems:'center' }}>
           <label style={{ fontSize:13, color:'#666' }}>Auto-refresh</label>
