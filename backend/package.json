@@ -11,6 +11,7 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.81.1",
     "axios": "^1.13.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
@@ -20,6 +21,3 @@
     "nodemon": "^3.1.10"
   }
 }
-
-
-
