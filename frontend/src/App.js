@@ -2,9 +2,10 @@ import React, { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
 import Header from './components/Header';
 import StatCard from './components/StatCard';
-import ChartMulti from './components/ChartMulti';
+import { TemperatureChart, HumidityChart } from './components/ChartsSeparate';
 import DataTable from './components/DataTable';
 import AlertBox from './components/AlertBox';
+import MLPredictor from './components/MLPredictor';
 
 const BACKEND = 'http://localhost:5000';
 
@@ -35,7 +36,6 @@ function App() {
   const [results, setResults] = useState(50);
   const [loading, setLoading] = useState(false);
   const [autoRefresh, setAutoRefresh] = useState(true);
-  const [dataSource, setDataSource] = useState('supabase'); // 'supabase' o 'thingspeak'
 
   const fetchSupabaseData = useCallback(async (limit = results) => {
     try {
@@ -68,15 +68,13 @@ function App() {
   }, [results]);
 
   useEffect(() => {
-    if (dataSource === 'supabase') {
-      fetchSupabaseData(results);
-      let id = null;
-      if (autoRefresh) {
-        id = setInterval(() => fetchSupabaseData(results), 30000); // 30 segundos
-      }
-      return () => { if (id) clearInterval(id); };
+    fetchSupabaseData(results);
+    let id = null;
+    if (autoRefresh) {
+      id = setInterval(() => fetchSupabaseData(results), 30000); // 30 segundos
     }
-  }, [fetchSupabaseData, results, autoRefresh, dataSource]);
+    return () => { if (id) clearInterval(id); };
+  }, [fetchSupabaseData, results, autoRefresh]);
 
   // Separar datos en temperatura y humedad
   const tempData = supabaseData.map(d => ({ 
@@ -92,8 +90,8 @@ function App() {
   }));
 
   return (
-    <div style={{ fontFamily:'Inter, Arial', padding:20, maxWidth:1200, margin:'0 auto', background:'#f8f9fa', minHeight:'100vh' }}>
-      <Header title="Dashboard ESP8266 + DHT22" subtitle="Monitor de Temperatura y Humedad" />
+    <div style={{ fontFamily:'Inter, Arial', padding:20, maxWidth:1400, margin:'0 auto', background:'#f8f9fa', minHeight:'100vh' }}>
+      <Header title="Dashboard ESP8266 + DHT22" subtitle="Monitor de Temperatura y Humedad con Machine Learning" />
 
       {/* Alertas */}
       {alerts.length > 0 && (
@@ -186,10 +184,44 @@ function App() {
         )}
       </div>
 
-      {/* Gráfico combinado */}
-      <div style={{ marginBottom:20 }}>
-        <h3 style={{ marginBottom:12, color:'#333' }}>📊 Gráfico de Temperatura y Humedad</h3>
-        <ChartMulti data={supabaseData} />
+      {/* Predictor de Machine Learning */}
+      <div style={{ marginBottom: 20 }}>
+        <MLPredictor data={supabaseData} />
+      </div>
+
+      {/* Gráficos separados */}
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:20, marginBottom:20 }}>
+        <div>
+          <h3 style={{ marginBottom:12, color:'#ff6b6b', display:'flex', alignItems:'center', gap:8 }}>
+            🌡️ Gráfico de Temperatura
+            <span style={{ 
+              fontSize:11, 
+              background:'#ff6b6b', 
+              color:'white', 
+              padding:'2px 8px', 
+              borderRadius:12 
+            }}>
+              Rango: 15-30°C
+            </span>
+          </h3>
+          <TemperatureChart data={supabaseData} />
+        </div>
+        
+        <div>
+          <h3 style={{ marginBottom:12, color:'#4ecdc4', display:'flex', alignItems:'center', gap:8 }}>
+            💧 Gráfico de Humedad
+            <span style={{ 
+              fontSize:11, 
+              background:'#4ecdc4', 
+              color:'white', 
+              padding:'2px 8px', 
+              borderRadius:12 
+            }}>
+              Rango: 30-70%
+            </span>
+          </h3>
+          <HumidityChart data={supabaseData} />
+        </div>
       </div>
 
       {/* Tablas separadas */}
